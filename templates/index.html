@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Шифрователь файлов</title>
+    <style>
+        body{font-family:sans-serif;max-width:500px;margin:50px auto;padding:20px}
+        input, button{padding:8px;margin:5px 0}
+        button{cursor:pointer}
+        .key-row{display:flex;gap:10px;margin:10px 0}
+        .key-row input{flex:1;font-family:monospace}
+        .file-row{display:flex;gap:10px;margin:10px 0}
+        .file-row .file-area{flex:1;margin:0}
+        .file-area{border:1px dashed #ccc;padding:20px;text-align:center;cursor:pointer}
+        .file-area.filled{border-color:#007aff;background:#e8f0fe}
+        .hint{font-size:12px;color:#666;margin-top:5px}
+        .key-label{font-size:13px;color:#333;margin-bottom:5px}
+        #actionBtn{display:none}
+    </style>
+</head>
+<body>
+    <h1>Шифрователь файлов (AES)</h1>
+    
+    <div class="key-label">Введите существующий ключ для расшифровки или сгенерируйте новый для шифрования</div>
+    <div class="key-row">
+        <input type="text" id="key" placeholder="Поле для ключа.">
+        <button id="genBtn">Сгенерировать</button>
+    </div>
+    
+    <div class="file-row">
+        <div id="fileArea" class="file-area">
+            <span id="fileName">Нажмите, чтобы выбрать файл</span>
+        </div>
+        <button id="actionBtn">Зашифровать</button>
+    </div>
+    <input type="file" id="fileInput" hidden>
+    
+    <div class="hint">Для шифрования подойдёт любой файл. Для расшифровки нужен файл с расширением .enc</div>
+
+    <script>
+        let file = null;
+        const $ = id => document.getElementById(id);
+        
+        $('genBtn').onclick = async () => {
+            let r = await fetch('/generate-key', {method: 'POST'});
+            let d = await r.json();
+            if (d.key) $('key').value = d.key;
+            else alert('Ошибка генерации');
+        };
+        
+        $('fileArea').onclick = () => $('fileInput').click();
+        $('fileInput').onchange = () => {
+            if ($('fileInput').files[0]) {
+                file = $('fileInput').files[0];
+                $('fileName').textContent = file.name;
+                $('fileArea').classList.add('filled');
+                
+                if (file.name.endsWith('.enc')) {
+                    $('actionBtn').textContent = 'Расшифровать';
+                } else {
+                    $('actionBtn').textContent = 'Зашифровать';
+                }
+                
+                $('actionBtn').style.display = 'block';
+            }
+        };
+        
+        $('actionBtn').onclick = async () => {
+            if (!file) return alert('Выберите файл');
+            let key = $('key').value.trim();
+            if (!key) return alert('Введите ключ');
+            
+            let isEncrypt = !file.name.endsWith('.enc');
+            let endpoint = isEncrypt ? '/encrypt' : '/decrypt';
+            let actionName = isEncrypt ? 'Шифрование' : 'Расшифрование';
+            
+            let fd = new FormData();
+            fd.append('file', file);
+            fd.append('key', key);
+            
+            let btn = $('actionBtn');
+            let old = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = actionName + '...';
+            
+            try {
+                let r = await fetch(endpoint, {method: 'POST', body: fd});
+                if (r.headers.get('content-type')?.includes('json')) {
+                    let e = await r.json();
+                    alert(e.error);
+                    return;
+                }
+                let blob = await r.blob();
+                let out = isEncrypt ? file.name + '.enc' : file.name.slice(0, -4);
+                let a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = out;
+                a.click();
+                URL.revokeObjectURL(a.href);
+                alert(actionName + ' завершено');
+            } catch {
+                alert('Ошибка соединения');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = old;
+            }
+        };
+    </script>
+</body>
+</html>
