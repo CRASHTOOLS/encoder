@@ -8,25 +8,24 @@ app.config["MAX_CONTENT_LENGTH"] = 1024 * 1024 * 1024  # 1 GB
 
 @app.route("/")
 def index():
-    """Главная страница"""
     return render_template("index.html")
 
 
 @app.route("/generate-key", methods=["POST"])
 def generate_key():
-    """Генерирует случайный AES-256 ключ и возвращает в hex-формате"""
+    """генерирует случайный AES-256 ключ и возвращает в hex-формате"""
     return jsonify({"key": crypt.generate_key().hex()})
 
 
 def process_file(endpoint, file, key_hex):
     """
-    Общая логика для шифрования и расшифровки.
-    Проверяет входные данные, обрабатывает файл и возвращает результат.
+    общая логика для шифрования и расшифровки.
+    проверяет входные данные, обрабатывает файл и возвращает результат.
     """
     if not file:
-        return jsonify({"error": "Нужен файл"}), 400
+        return jsonify({"error": "нужен файл"}), 400
     if not key_hex:
-        return jsonify({"error": "Нужен ключ"}), 400
+        return jsonify({"error": "нужен ключ"}), 400
 
     try:
         key = crypt.key_from_hex(key_hex)
@@ -42,12 +41,12 @@ def process_file(endpoint, file, key_hex):
             download_name=file.filename
         )
     except Exception:
-        return jsonify({"error": "Ошибка обработки"}), 500
+        return jsonify({"error": "ошибка обработки"}), 500
 
 
 @app.route("/encrypt", methods=["POST"])
 def encrypt():
-    """Шифрует загруженный файл"""
+    """шифрует загруженный файл"""
     file = request.files.get("file")
     key_hex = request.form.get("key")
 
@@ -64,7 +63,7 @@ def encrypt():
 
 @app.route("/decrypt", methods=["POST"])
 def decrypt():
-    """Расшифровывает загруженный файл (должен быть .enc)"""
+    """расшифровывает загруженный файл (должен быть .enc)"""
     file = request.files.get("file")
     key_hex = request.form.get("key")
 
@@ -84,5 +83,5 @@ def decrypt():
 
 
 if __name__ == "__main__":
-    print("Сервер запущен. Адрес: http://127.0.0.1:5000")
+    print("сервер запущен: http://127.0.0.1:5000")
     app.run(debug=True)
